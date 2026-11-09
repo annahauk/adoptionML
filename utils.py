@@ -504,7 +504,8 @@ def load_los_splits():
 
 def evaluate_classifier(estimator, train: pd.DataFrame, eval_df: pd.DataFrame, name: str,
                         target: str = "los_bin", labels=None, ordinal: bool = True,
-                        preprocessor=None, results_dir=None, eval_split: str = "val"):
+                        preprocessor=None, results_dir=None, eval_split: str = "val",
+                        extra: dict | None = None):
     """Fit `make_preprocessor() -> estimator` on train, score on eval_df.
 
     Reports accuracy, macro-F1, per-class precision/recall, and (if ordinal)
@@ -539,6 +540,8 @@ def evaluate_classifier(estimator, train: pd.DataFrame, eval_df: pd.DataFrame, n
                     "fit_seconds": fit_s, "predict_seconds": pred_s,
                     "eval_split": eval_split, "n_train": len(train), "n_eval": len(eval_df),
                     "params": {k: repr(v) for k, v in estimator.get_params().items()}})
+    if extra:
+        metrics.update(extra)
     print(f"train accuracy {metrics['train_accuracy']:.3f}  |  fit {fit_s:.1f}s  predict {pred_s:.1f}s")
 
     fig, ax = plt.subplots(figsize=(5.5, 4.5))
@@ -557,3 +560,125 @@ def evaluate_classifier(estimator, train: pd.DataFrame, eval_df: pd.DataFrame, n
         fig.savefig(results_dir / f"{slug}_confusion.png", dpi=150, bbox_inches="tight")
     plt.show()
     return pipe, metrics
+
+
+# ---------------------------------------------------------------------------
+# Hyperparameter tuning
+# ---------------------------------------------------------------------------
+TUNE_VAL_START = "2021-01-01"  # inner validation year carved out of the train period
+
+
+def _to_json(v):
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.floating,)):
+        return float(v)
+    if isinstance(v, tuple):
+        return list(v)
+    return v
+
+
+def tune_classifier(estimator, param_distributions: dict, train: pd.DataFrame, name: str,
+                    n_iter: int = 15, scoring: str = "f1_macro", target: str = "los_bin",
+                    inner_val_start: str = TUNE_VAL_START, n_jobs: int = -1,
+                    results_dir=None, verbose: bool = True):
+    """Randomized search using a time-ordered inner split *inside* the train period.
+
+    Train rows are split (by time, grouped by animal) into sub-train
+    (< inner_val_start) and inner-val (inner_val_start .. end of train). Each
+    candidate is fit on sub-train and scored on inner-val; the outer val set
+    (2022) and test set are never seen during the search, so the val score
+    of the tuned model stays an honest comparison with the untuned one.
+
+    `param_distributions` uses the estimator's own parameter names (no
+    `model__` prefix). Returns (best_params, cv_results DataFrame, info dict).
+    """
+    import time
+
+    from sklearn.base import clone
+    from sklearn.model_selection import PredefinedSplit, RandomizedSearchCV
+    from sklearn.pipeline import Pipeline
+
+    sub, inner, _ = time_group_split(train, val_start=inner_val_start,
+                                     test_start="2100-01-01")
+    both = pd.concat([sub, inner], ignore_index=True)
+    fold = np.r_[np.full(len(sub), -1), np.zeros(len(inner), dtype=int)]
+
+    est = clone(estimator)
+    if "n_jobs" in est.get_params():  # parallelize over candidates, not inside each fit
+        est.set_params(n_jobs=1)
+    pipe = Pipeline([("pre", make_preprocessor()), ("model", est)])
+    space = {f"model__{k}": v for k, v in param_distributions.items()}
+    n_iter = min(n_iter, _grid_size(param_distributions) or n_iter)
+
+    search = RandomizedSearchCV(pipe, space, n_iter=n_iter, scoring=scoring,
+                                cv=PredefinedSplit(fold), refit=False, n_jobs=n_jobs,
+                                random_state=SEED, error_score=np.nan)
+    t0 = time.perf_counter()
+    search.fit(both[FEATURES], both[target])
+    secs = time.perf_counter() - t0
+
+    res = pd.DataFrame(search.cv_results_)
+    keep = [c for c in res if c.startswith("param_")] + ["mean_test_score", "mean_fit_time"]
+    res = (res[keep].rename(columns=lambda c: c.replace("param_model__", ""))
+           .rename(columns={"mean_test_score": f"inner_val_{scoring}"})
+           .sort_values(f"inner_val_{scoring}", ascending=False).reset_index(drop=True))
+    best = {k.replace("model__", ""): _to_json(v) for k, v in search.best_params_.items()}
+    if verbose:
+        print(f"{name}: {n_iter} candidates in {secs / 60:.1f} min | sub-train {len(sub):,}, "
+              f"inner-val {len(inner):,} | best inner-val {scoring} {search.best_score_:.3f}")
+        print("best params:", best)
+    if results_dir is not None:
+        results_dir = Path(results_dir)
+        results_dir.mkdir(parents=True, exist_ok=True)
+        slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+        res.to_csv(results_dir / f"{slug}_search.csv", index=False)
+    info = {"best_params": best, "inner_val_score": float(search.best_score_),
+            "tuning_scoring": scoring, "tuning_n_iter": n_iter, "tuning_minutes": secs / 60}
+    return best, res, info
+
+
+def _grid_size(space: dict):
+    """Number of combinations if every value is a list, else None (continuous)."""
+    n = 1
+    for v in space.values():
+        if not isinstance(v, (list, tuple)):
+            return None
+        n *= len(v)
+    return n
+
+
+def with_params(estimator, params: dict):
+    """Clone `estimator` and set `params` (from a tuned JSON); lists -> tuples
+    for hidden_layer_sizes."""
+    from sklearn.base import clone
+    p = dict(params)
+    if "hidden_layer_sizes" in p and isinstance(p["hidden_layer_sizes"], list):
+        p["hidden_layer_sizes"] = tuple(p["hidden_layer_sizes"])
+    return clone(estimator).set_params(**p)
+
+
+# ---------------------------------------------------------------------------
+# Estimator workarounds
+# ---------------------------------------------------------------------------
+from sklearn.neural_network import MLPClassifier as _MLPClassifier  # noqa: E402
+from sklearn.preprocessing import LabelEncoder as _LabelEncoder  # noqa: E402
+
+
+class SafeMLPClassifier(_MLPClassifier):
+    """MLPClassifier that accepts string labels with early_stopping=True.
+
+    scikit-learn 1.7's early-stopping validation calls np.isnan on the
+    predicted labels, which raises TypeError for string classes such as
+    '<1 week'. This subclass trains on integer-encoded labels and decodes
+    predictions; everything else is identical to MLPClassifier.
+    """
+
+    def fit(self, X, y, **kwargs):
+        self._label_encoder = _LabelEncoder().fit(y)
+        super().fit(X, self._label_encoder.transform(y), **kwargs)
+        self.classes_ = self._label_encoder.classes_
+        return self
+
+    def predict(self, X):
+        return self._label_encoder.inverse_transform(super().predict(X).astype(int))
