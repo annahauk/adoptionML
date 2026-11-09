@@ -5,3 +5,10 @@
 *.ali
 
 .env
+# Data (never commit; see README)
+data/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

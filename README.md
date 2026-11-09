@@ -100,7 +100,6 @@ Each analysis folder contains numbered notebooks (`01_clean.ipynb`, `02_model.ip
 - **Randomness:** fixed seed (`SEED = 42`) defined in `utils.py`.
 - **Metrics:** report macro-F1 and per-class precision/recall for outcome classification (not just accuracy). For PetFinder adoption speed, also report quadratic weighted kappa. For regression, report MAE and RMSE.
 - **Baselines first:** always compare against a simple baseline (majority class / mean) before tuning.
-- **Notebook hygiene:** clear outputs before committing (`nbstripout`), and save key figures to the relevant analysis folder.
 
 ---
 
