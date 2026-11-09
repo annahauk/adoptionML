@@ -1,0 +1,25 @@
+{
+  "model": "Majority class (baseline)",
+  "macro_f1": 0.15081467744072063,
+  "accuracy": 0.43190440060698027,
+  "precision_<1 week": 0.43190440060698027,
+  "recall_<1 week": 1.0,
+  "precision_1-4 weeks": 0.0,
+  "recall_1-4 weeks": 0.0,
+  "precision_1-3 months": 0.0,
+  "recall_1-3 months": 0.0,
+  "precision_3+ months": 0.0,
+  "recall_3+ months": 0.0,
+  "qwk": 0.0,
+  "train_accuracy": 0.5588128559933101,
+  "fit_seconds": 0.4473425829928601,
+  "predict_seconds": 0.026552582989097573,
+  "eval_split": "val",
+  "n_train": 126758,
+  "n_eval": 10544,
+  "params": {
+    "constant": "None",
+    "random_state": "None",
+    "strategy": "'most_frequent'"
+  }
+}

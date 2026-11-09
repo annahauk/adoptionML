@@ -1,0 +1,38 @@
+{
+  "model": "k-nearest neighbors (tuned)",
+  "macro_f1": 0.32191773231685683,
+  "accuracy": 0.4615895295902883,
+  "precision_<1 week": 0.5170370370370371,
+  "recall_<1 week": 0.6897233201581028,
+  "precision_1-4 weeks": 0.3865050769734687,
+  "recall_1-4 weeks": 0.34502923976608185,
+  "precision_1-3 months": 0.3902087832973362,
+  "recall_1-3 months": 0.26871591472483886,
+  "precision_3+ months": 0.14814814814814814,
+  "recall_3+ months": 0.007233273056057866,
+  "qwk": 0.20617140980216297,
+  "train_accuracy": 0.6432177850707648,
+  "fit_seconds": 0.5084391669952311,
+  "predict_seconds": 3.2603466250002384,
+  "eval_split": "val",
+  "n_train": 126758,
+  "n_eval": 10544,
+  "params": {
+    "algorithm": "'auto'",
+    "leaf_size": "30",
+    "metric": "'minkowski'",
+    "metric_params": "None",
+    "n_jobs": "-1",
+    "n_neighbors": "15",
+    "p": "2",
+    "weights": "'uniform'"
+  },
+  "best_params": {
+    "weights": "uniform",
+    "n_neighbors": 15
+  },
+  "inner_val_score": 0.31987392810551485,
+  "tuning_scoring": "f1_macro",
+  "tuning_n_iter": 10,
+  "tuning_minutes": 0.49338730901678596
+}

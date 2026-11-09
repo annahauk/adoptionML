@@ -1,0 +1,24 @@
+{
+  "model": "Gaussian naive Bayes",
+  "macro_f1": 0.1535613606630551,
+  "accuracy": 0.15809939301972686,
+  "precision_<1 week": 0.7612612612612613,
+  "recall_<1 week": 0.18555116381203338,
+  "precision_1-4 weeks": 0.36926605504587157,
+  "recall_1-4 weeks": 0.04707602339181287,
+  "precision_1-3 months": 0.2966601178781925,
+  "recall_1-3 months": 0.07486365889935548,
+  "precision_3+ months": 0.060077747673459775,
+  "recall_3+ months": 0.9222423146473779,
+  "qwk": 0.07977486165142211,
+  "train_accuracy": 0.1766200160936588,
+  "fit_seconds": 0.6795974580018083,
+  "predict_seconds": 0.05251158299506642,
+  "eval_split": "val",
+  "n_train": 126758,
+  "n_eval": 10544,
+  "params": {
+    "priors": "None",
+    "var_smoothing": "1e-09"
+  }
+}
