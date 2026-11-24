@@ -2,7 +2,7 @@
 
 This is a briefing for an assistant helping write and edit the research write-up (LaTeX, in Overleaf) for this project. The code lives in the GitHub repo `annahauk/adoptionML`, and this file summarizes it. **Every number below comes from code that was actually run.** If a number isn't here or in a synced repo file, it doesn't exist yet: do not invent it.
 
-Last updated: 2026-11-09. If the repo files disagree with this document, trust the repo.
+Last updated: 2026-11-24. If the repo files disagree with this document, trust the repo.
 
 ---
 
@@ -11,7 +11,7 @@ Last updated: 2026-11-09. If the repo files disagree with this document, trust t
 1. **Never invent numbers, citations, or results.** If a sentence needs a value that isn't in this file, write `\todo{value from X}` (or `[TODO: ...]`) and keep going.
 2. **Associations, not causes.** Feature importance, outcome-rate differences and cluster differences are associations. Use "is associated with" and "predicts", never "causes" or "leads to".
 3. **Euthanasia framing.** Euthanasia is mostly a medical or behavioral shelter decision, not a verdict on an animal's adoptability. In prose and figures, present that class as **"at-risk / needs attention"**.
-4. **Metric names stay fixed:** accuracy, macro-F1, quadratic weighted kappa (QWK), precision, recall, MAE, RMSE. Always say which split a number is on (val = 2022; test is still untouched).
+4. **Metric names stay fixed:** accuracy, macro-F1, quadratic weighted kappa (QWK), precision, recall, MAE, RMSE. Always say which split a number is on (val = 2022; test = 2023-01 to 2025-02, see 6h).
 5. **Always give the baseline** next to any accuracy. Accuracy is misleading here because the classes are imbalanced.
 6. **LaTeX:** produce compilable LaTeX. Use `booktabs` for tables (`\toprule`, `\midrule`, `\bottomrule`), `\cref`/`\ref` for cross-references, and `\cite{key}` with a BibTeX entry for any citation. Don't change the document class or preamble unless asked.
 7. **Tone:** a course research project (AI 595, Applied Machine Learning) headed for a research/AI symposium. Clear and concise, honest about limits. Limitations are part of the contribution, not something to hide.
@@ -54,7 +54,7 @@ Code: `utils.py` (`build_austin_episodes`). Notebook: `eda/austindataprocessing.
 
   Rare breed, color and city levels are grouped into "Other" using **training data only**.
 - **Censoring:** 1,019 intakes have no outcome (740 of them from the last 90 days). Intakes within 90 days of the end of the data are excluded from supervised train/eval, so the most recent data isn't biased toward short stays. Stays over 365 days (568; almost always a missing record) are excluded.
-- **Split: by time and grouped by animal.** Train: intake < 2022-01-01. Val: 2022. Test: 2023-01-01 to 2025-02-03, **not used yet**. Each animal belongs to the split of its first intake, so no animal appears in two splits; about 0.8% of rows are dropped as a result. A random row-wise split would leak repeat animals and hide drift.
+- **Split: by time and grouped by animal.** Train: intake < 2022-01-01. Val: 2022. Test: 2023-01-01 to 2025-02-03, scored once (6h). Each animal belongs to the split of its first intake, so no animal appears in two splits; about 0.8% of rows are dropped as a result. A random row-wise split would leak repeat animals and hide drift.
 
 | Split | Outcome task rows | Length-of-stay task rows |
 |---|---|---|
@@ -75,7 +75,7 @@ Code: `utils.py` (`build_austin_episodes`). Notebook: `eda/austindataprocessing.
 - **Seasonality:** cat intakes peak in May–June at about 1.5× the monthly average (kitten season). Dog intakes are flat across the year. Intakes dropped sharply in 2020 (COVID).
 - **Drift:** adoption share rose from about 42% (2013–15) to 65% (2024); return to owner fell from about 20% to 9%; euthanasia fell from 6.7% (2013) to about 2%.
 
-## 6. Results so far (all on val = 2022; default hyperparameters unless noted)
+## 6. Results so far (val = 2022 except 6h, the final test results; default hyperparameters unless noted)
 
 ### 6a. Outcome prediction (4 classes), `eda/` baselines and quick checks
 
@@ -86,7 +86,69 @@ Code: `utils.py` (`build_austin_episodes`). Notebook: `eda/austindataprocessing.
 | Gradient boosting (HistGradientBoosting) | 0.686 | 0.490 |
 | Gradient boosting **without** `has_name` | 0.670 | 0.454 |
 
-Full model comparison for outcome prediction (`outcome_pred/`): **not done yet**.
+These early checks are superseded by the full comparison in 6a-ii.
+
+### 6a-ii. Outcome prediction: full model comparison (`outcome_pred/` notebooks 01–13, val 2022)
+
+Same split, features and tuning procedure as for length of stay (§6d). Tuning: randomized search fit on intakes before 2021, scored by macro-F1 on 2021, refit on all training years, scored on 2022.
+
+| Model | Untuned acc / macro-F1 | Tuned acc / macro-F1 | Tuned at-risk (euthanasia) recall / precision | Tuned train acc |
+|---|---|---|---|---|
+| **Random forest** | 0.661 / 0.475 | 0.646 / **0.518** | 0.37 / 0.26 | 0.794 |
+| Extra trees | 0.653 / 0.476 | 0.628 / 0.507 | 0.43 / 0.22 | 0.798 |
+| Gradient boosting | **0.686** / 0.490 | 0.678 / 0.482 | 0.12 / 0.44 | 0.771 |
+| Neural network (MLP) | 0.668 / 0.472 | 0.673 / 0.480 | 0.16 / 0.53 | 0.707 |
+| Logistic regression | 0.651 / 0.411 | 0.610 / 0.468 | 0.43 / 0.19 | 0.564 |
+| Linear SVM | 0.656 / 0.395 | 0.627 / 0.465 | 0.36 / 0.16 | 0.608 |
+| Decision tree | 0.575 / 0.406 | 0.586 / 0.463 | 0.53 / 0.14 | 0.599 |
+| AdaBoost | 0.567 / 0.371 | 0.633 / 0.455 | 0.11 / 0.41 | 0.639 |
+| k-nearest neighbors | 0.611 / 0.395 | 0.611 / 0.395 | 0.07 / 0.24 | 0.736 |
+| Gaussian naive Bayes | 0.107 / 0.132 | 0.433 / 0.379 | 0.63 / 0.10 | 0.492 |
+| *Majority baseline* | *0.604 / 0.188* | — | — | — |
+
+- **Best model: the tuned random forest.** Settings: `class_weight="balanced"`, 300 trees, `max_depth=30`, `min_samples_leaf=5`, `max_features=0.3`. Per-class recall: Adoption 0.76, Transfer 0.36, Return to Owner 0.77, at-risk 0.37.
+- **Outcome is much more predictable than length of stay** (macro-F1 0.52 vs 0.41).
+- **Two model profiles:**
+  - Class-balanced models (random forest, extra trees, logistic regression) find more at-risk animals at lower precision.
+  - Unweighted models (gradient boosting, MLP, AdaBoost) are more accurate overall and more precise on the at-risk class, but flag few at-risk animals.
+- Gradient boosting got slightly worse after tuning (0.490 → 0.482), because settings chosen on 2021 didn't carry over to 2022.
+- **Transfer is the hardest class** (recall 0.23–0.37). It depends on partner and foster capacity, which isn't in the data.
+
+**Analysis of the tuned random forest and gradient boosting** (`outcome_pred/13_analysis.ipynb`):
+- **Grouped permutation importance** (drop in val macro-F1, random forest / gradient boosting):
+  - age 0.103 / 0.073
+  - intake condition 0.074 / 0.046
+  - intake type 0.067 / 0.054
+  - owner-given name 0.060 / 0.047
+  - species 0.037 / 0.024
+  - sex & sterilization 0.018 / 0.037
+  - breed −0.000 / 0.021; location, date, history and color ≤ 0.003
+- **Per-class importance** (random forest, drop in that class's F1):
+  - at-risk ← intake condition 0.22, age 0.11, species 0.08;
+  - return to owner ← owner-given name 0.21, intake type 0.18, age 0.10;
+  - transfer ← age 0.13;
+  - adoption ← age 0.08, intake type 0.04.
+- **PR-AUC (random forest / gradient boosting; base rate):** Adoption 0.82 / 0.82 (0.60); Transfer 0.54 / 0.57 (0.27); Return to Owner 0.53 / 0.53 (0.10); at-risk 0.24 / 0.22 (0.02, i.e. 11× the base rate).
+- **The at-risk flag as a screen** (random forest; precision / recall of at-risk animals):
+
+  | Share of intakes flagged | Precision | Recall |
+  |---|---|---|
+  | Top 1% | 0.39 | 0.18 |
+  | Top 2% | 0.31 | 0.29 |
+  | Top 5% | 0.20 | 0.46 |
+  | Top 10% | 0.13 | 0.61 |
+  | Top 20% | 0.08 | 0.79 |
+
+- **Species gap in the at-risk flag** (key limitation and fairness finding):
+  - At-risk recall: random forest cats 0.57 vs dogs 0.05; gradient boosting cats 0.17 vs dogs 0.02.
+  - Macro-F1: random forest cats 0.547, dogs 0.421.
+  - Reason: in training years, cat euthanasia is 85% "Suffering" and only 32% of those cats arrive in Normal condition. Dog euthanasia is 30% Aggressive + 8% Behavior (48% Suffering), and 57% of those dogs arrive in Normal condition, so behavioral risk isn't visible at intake.
+- **`has_name` ablation:**
+
+  | Model | Macro-F1 with → without | Return to Owner recall | At-risk recall |
+  |---|---|---|---|
+  | Random forest | 0.518 → 0.493 | 0.77 → 0.55 | 0.37 → 0.40 |
+  | Gradient boosting | 0.482 → 0.454 | — | — |
 
 ### 6b. Length of stay as 4 ordinal bins (<1 week, 1–4 weeks, 1–3 months, 3+ months), `length_of_stay/`
 
@@ -169,12 +231,109 @@ Same split and tuned settings. "Species-specific" means a dog-only model for dog
 
 - Gradient boosting **re-tuned separately per species** reaches overall macro-F1 0.363, vs 0.383 for the combined model.
 - **Conclusion:** splitting by species does not help the strong models. Changes are within about ±0.015 macro-F1, and gradient boosting and the MLP get worse on cats (gradient boosting's cat accuracy goes 0.506 → 0.479). Only the weak models benefit, because they can't model species interactions themselves.
-- **Recommendation:** use one combined model with `animal_type` as a feature, and report per-species metrics as a subgroup check. Cats are slightly harder to predict than dogs for every model.
+- **Recommendation:** use one combined model with `animal_type` as a feature, and report per-species metrics as a subgroup check. On val, every non-baseline model has lower accuracy on cats than dogs, but macro-F1 is lower for cats in only 5 of 10. On test (2023-25) the two shortlisted models score higher on cats on accuracy, macro-F1 and QWK, so there is no stable species gap.
+
+### 6f. Feature importance and the predictability ceiling (`length_of_stay/14_feature_importance.ipynb`)
+
+**Grouped permutation importance:** each concept's raw columns are shuffled together on val (5 repeats), and we measure the drop in macro-F1. Groups are defined in `utils.FEATURE_GROUPS`.
+
+| Feature group | Tuned random forest | Tuned gradient boosting |
+|---|---|---|
+| Age (`age_days`, `log_age_days`, `age_group`) | **0.099** | **0.078** |
+| Breed (`breed_primary`, `is_mix`) | 0.034 | 0.035 |
+| Species | 0.024 | 0.023 |
+| Owner-given name (`has_name`) | 0.021 | 0.023 |
+| Intake type | 0.015 | 0.015 |
+| Sex & sterilization | 0.012 | 0.013 |
+| Intake condition | 0.008 | 0.008 |
+| Intake date & time | 0.004 | 0.012 |
+| Found location | 0.003 | 0.003 |
+| Shelter history | 0.002 | 0.001 |
+| Color | 0.001 | 0.005 |
+
+**Direction of effects (training years, descriptive):**
+- **Age effect differs by species.**
+  - Kittens under 8 weeks: median stay 9.9 days, 36% stay 30+ days. They mostly go to partner or foster transfers (46%) or adoption (51%) once old enough.
+  - Senior cats (8+ years): 24% stay 30+ days.
+  - Senior dogs (8+ years): median 3.1 days, and 50% are reclaimed by owners (vs 28% for dogs aged 1–3).
+- **Intake route:** owner surrenders and abandoned animals have 21–24% 30+ day stays vs 18% for strays. Euthanasia requests and sick or aged animals leave within days (medians 0.1–3 days).
+- **Sterilization at intake:** "Unknown" sterilization status (neonates, community cats) gives a median stay of 0.15 days.
+
+**Why the scores are low:**
+
+| Check | Result |
+|---|---|
+| Learning curve (tuned random forest) | val macro-F1 0.385 with 5% of training data → 0.405 with 100%, flat from 50% on. **Not a data-size problem.** |
+| Variance explained | Gradient boosting regression on log(1 + days): **R² = 0.22 on val** (0.30 on train); median absolute error 6.2 days |
+| 5-feature profile lookup (species, age group, intake type, condition, sterilization) | macro-F1 0.285, QWK 0.145, vs the random forest's 0.405 / 0.342. The model adds real value. |
+| Oracle: random forest + eventual outcome (leaky, diagnostic) | macro-F1 0.487, QWK 0.565, accuracy 0.577 |
+| Bin-edge noise | 11.4% of val stays within ±1 day of 7/30/90; 21.5% within ±2; 32.2% within ±3 |
+| Same-profile spread | Healthy stray intact dogs aged 1–3 (val): 34 / 38 / 19 / 9% across the four bins |
+
+**Interpretation:** stay length is driven mainly by events during the stay (medical holds, foster placement, adopter timing, owners coming forward), which aren't known at intake. Present length-of-stay predictions as a **risk flag**, not a precise forecast.
+
+### 6g. Dog breed segments: PCA + k-means (`PCA/01_breed_pca.ipynb`)
+
+**Method:**
+- 79 dog primary breeds with ≥ 100 stays in the training years (< 2022), covering 95.5% of dog stays.
+- 15 breed-level statistics: outcome rates, median stay, 30+ day share, stray and owner-surrender shares, non-normal condition share, median age, puppy share, sterilized-at-intake share, mix share, named share, repeat-visit share.
+- Standardized, then PCA. 5 PCs explain 83% of the variance; k-means on those 5 PCs, k = 3 chosen by silhouette among 3–6.
+- Silhouette is about 0.30, so the segments are a **gradient, not sharply separated groups**.
+- Cats are excluded: only 9 cat breeds have ≥ 100 stays.
+- Output: `PCA/results/dog_breed_segments.csv`.
+
+**Principal components:**
+- **PC1 (39%):**
+  - High: adoption rate, puppy share, mix share, longer stays.
+  - Low: return to owner, older age, owner-given name, transfer.
+  - Examples: cattle dogs, hounds and pointers sit high; Shih Tzu, Pomeranian, Lhasa Apso and Pekingese sit low.
+- **PC2 (18%):**
+  - High: median stay, 30+ day share, repeat visits, sterilized at intake, euthanasia, return to owner.
+  - Low: strays and puppies.
+  - Examples: American Bulldog, Staffordshire, Pit Bull and Akita sit high.
+
+**Segments** (statistics weighted by number of stays):
+
+| Segment | Example breeds | Breeds / stays | Adoption | Return to owner | Median stay | 30+ days | Euthanasia |
+|---|---|---|---|---|---|---|---|
+| 0: Common mixes, herding & working dogs | Labrador, Chihuahua, German Shepherd, Australian Cattle Dog, Dachshund, Border Collie | 44 / 45,583 | 53% | 23% | 5.7 d | 12% | 2% |
+| 1: Bully & large guardian breeds | Pit Bull, Boxer, Staffordshire, Rottweiler, American Bulldog, Chow Chow, Akita | 12 / 17,187 | 43% | 33% | 8.5 d | 23% | 5% |
+| 2: Small companion breeds & huskies | Siberian Husky, Miniature Poodle, Yorkshire Terrier, Shih Tzu, Maltese, Pug, Golden Retriever | 23 / 9,791 | 35% | 36% | 3.9 d | 4% | 2% |
+
+- **Segment 1 is the "needs attention" group:** the longest stays, the highest euthanasia rate (5%) and the most repeat visits (22%).
+- **Segment 2's low adoption rate reflects owner reclaims, not poor outcomes.** It has the shortest stays; these dogs are older (median 2.5 years) and 72% have an owner-given name.
+- **Caveat:** breed labels are shelter-assigned, visually judged and unreliable (especially "Pit Bull"), and mixes are counted under their first-listed breed. Differences reflect who arrives under each label, not causal breed effects.
+
+### 6h. FINAL TEST RESULTS (`final_evaluation/01_test_set_evaluation.ipynb`)
+
+**Headline** (test 2023-01-01 to 2025-02-03; fit on all pre-2023 intakes; 95% bootstrap CIs over test animals)
+
+| Task | Model | Accuracy | Macro-F1 | QWK |
+|---|---|---|---|---|
+| Outcome | Majority baseline | 0.645 [0.639, 0.652] | 0.196 [0.195, 0.197] | - |
+| Outcome | Random forest | 0.675 [0.668, 0.681] | 0.519 [0.509, 0.528] | - |
+| Outcome | Gradient boosting | **0.719** [0.713, 0.725] | 0.518 [0.506, 0.530] | - |
+| Length of stay | Majority baseline | 0.391 [0.384, 0.398] | 0.141 [0.139, 0.142] | 0.000 |
+| Length of stay | Random forest | 0.465 [0.459, 0.472] | **0.413** [0.405, 0.420] | 0.314 [0.300, 0.327] |
+| Length of stay | Gradient boosting | **0.494** [0.487, 0.500] | 0.393 [0.385, 0.401] | 0.316 [0.304, 0.328] |
+
+- **Overall scores held.** Random forest macro-F1, val to test: outcome 0.518 to 0.519, length of stay 0.405 to 0.413. Length-of-stay QWK fell (0.342 to 0.314).
+- **Outcome:** the models tie on macro-F1; gradient boosting is more accurate. **Length of stay:** random forest leads on macro-F1, gradient boosting on accuracy; QWK ties.
+- **The at-risk (euthanasia) class got worse**, hidden by better Transfer recall (random forest 0.36 to 0.53). Random forest at-risk recall 0.37 to 0.27, precision 0.26 to 0.17, PR-AUC 0.24 to 0.16 (base rate 0.021). Gradient boosting test PR-AUC is 0.18.
+- **Screen (random forest):** flagging the top 5% catches 38% at 16% precision (val: 46% at 20%); top 10% catches 53% at 11%.
+- **Species:** at-risk recall is 43% for cats and 6% for dogs (random forest), so the gap persists.
+- **`has_name` (random forest):** removing it changes outcome macro-F1 0.519 to 0.499 and Return to Owner recall 0.77 to 0.59; length of stay is unchanged (0.413 vs 0.414).
+
+**Limits**
+- Test was scored once, with models and settings fixed beforehand. It was not fully unseen: the EDA described all years, including 2023-25 outcome trends.
+- Test contains animals first seen in 2023 or later, so results do not cover returning animals known from earlier years.
+- CIs reflect test-set sampling only, not refitting or drift. Val vs test also differ in training data (pre-2022 vs pre-2023), so the change is not purely drift.
+- Stays without an outcome are excluded, which slightly under-represents very long stays near the end of the window.
 
 ## 7. Decisions and caveats
 
 - **`has_name` is kept as a feature (team decision).** Evidence that it may leak: the Name field is one current-name value copied onto every record. It is identical across all of an animal's stays and between intake and outcome rows. Among strays, 93.5% of those returned to their owner have a name vs 16% of those transferred. The write-up should state this caveat and report results with and without the feature (numbers in 6a and 6b).
-- **The test set is untouched.** All numbers so far are on val. Test is scored once, after tuning.
+- **The test set has been scored once** (6h), with models and settings fixed beforehand. Do not tune against it. All other numbers are on val. The EDA did describe 2023-25 data, so don't call it completely unseen.
 - **Tuning is light to medium** (10–25 random candidates per model, one inner validation year). A larger search or time-series cross-validation over several years could change the rankings slightly. Untuned deep trees overfit (99% train accuracy); tuning reduced that (random forest: 80%).
 - **Species:** one combined model is used (see 6e).
 - The prior-intake count misses any history before Oct 2013.
@@ -198,13 +357,11 @@ Get exact BibTeX from the publisher or Google Scholar; don't reconstruct it from
 
 ## 9. Status and planned work
 
-- Done: Austin cleaning and join, EDA, leakage-safe features, time-grouped split, length-of-stay model comparison (untuned and tuned), dogs-vs-cats comparison, outcome baselines.
+- Done: Austin cleaning and join, EDA, leakage-safe features, time-grouped split, length-of-stay model comparison (untuned and tuned), dogs-vs-cats comparison, outcome baselines, length-of-stay feature importance and predictability diagnostics, dog breed PCA segmentation, outcome-prediction model comparison (untuned and tuned) and analysis, final test-set evaluation.
 - Next:
-  - outcome-prediction model comparison (`outcome_pred/`);
-  - final test-set evaluation (once) of the shortlisted length-of-stay models: tuned random forest and gradient boosting;
-  - a binary long-stay (≥ 30 days) model, and/or regression on log-days, and/or survival analysis;
-  - permutation feature importance.
-- Later: PetFinder photo-quality features and ablation; PCA and clustering segmentation; Bayesian intake forecasting (seasonal); Streamlit dashboard; a subgroup check (breed, color).
+  - probability calibration of the at-risk flag before showing percentages in the dashboard;
+  - a binary long-stay (≥ 30 days) model, and/or survival analysis.
+- Later: PetFinder photo-quality features and ablation; breed segment as a model feature; Bayesian intake forecasting (seasonal); Streamlit dashboard; a subgroup check (breed, color).
 
 ## 10. Suggested paper outline
 
