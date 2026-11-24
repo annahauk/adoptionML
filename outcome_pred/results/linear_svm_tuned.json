@@ -1,0 +1,41 @@
+{
+  "model": "Linear SVM (tuned)",
+  "macro_f1": 0.46541773983049595,
+  "accuracy": 0.627229146692234,
+  "precision_Adoption": 0.7086846543001686,
+  "recall_Adoption": 0.8004761904761905,
+  "precision_Transfer": 0.5700525394045534,
+  "recall_Transfer": 0.23003533568904594,
+  "precision_Return to Owner": 0.45873205741626794,
+  "recall_Return to Owner": 0.7121634168987929,
+  "precision_Euthanasia": 0.162,
+  "recall_Euthanasia": 0.3632286995515695,
+  "train_accuracy": 0.608120168937764,
+  "fit_seconds": 6.178199624991976,
+  "predict_seconds": 0.02898733294568956,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "C": "0.0054167545832474575",
+    "class_weight": "'balanced'",
+    "dual": "'auto'",
+    "fit_intercept": "True",
+    "intercept_scaling": "1",
+    "loss": "'squared_hinge'",
+    "max_iter": "1000",
+    "multi_class": "'ovr'",
+    "penalty": "'l2'",
+    "random_state": "42",
+    "tol": "0.0001",
+    "verbose": "0"
+  },
+  "best_params": {
+    "C": 0.0054167545832474575,
+    "class_weight": "balanced"
+  },
+  "inner_val_score": 0.45853992244588154,
+  "tuning_scoring": "f1_macro",
+  "tuning_n_iter": 10,
+  "tuning_minutes": 0.45092929375047486
+}

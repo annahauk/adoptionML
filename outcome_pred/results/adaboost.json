@@ -1,0 +1,26 @@
+{
+  "model": "AdaBoost",
+  "macro_f1": 0.3711907442154464,
+  "accuracy": 0.5671140939597316,
+  "precision_Adoption": 0.656834855517293,
+  "recall_Adoption": 0.6963492063492064,
+  "precision_Transfer": 0.3806706114398422,
+  "recall_Transfer": 0.4091872791519435,
+  "precision_Return to Owner": 0.5218617771509168,
+  "recall_Return to Owner": 0.3435468895078923,
+  "precision_Euthanasia": 0.0,
+  "recall_Euthanasia": 0.0,
+  "train_accuracy": 0.5932743644911945,
+  "fit_seconds": 16.75412595900707,
+  "predict_seconds": 0.14519062504405156,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "algorithm": "'deprecated'",
+    "estimator": "None",
+    "learning_rate": "1.0",
+    "n_estimators": "50",
+    "random_state": "42"
+  }
+}

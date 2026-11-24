@@ -1,0 +1,33 @@
+{
+  "model": "Linear SVM",
+  "macro_f1": 0.3949223931016604,
+  "accuracy": 0.6560882070949186,
+  "precision_Adoption": 0.6778301886792453,
+  "recall_Adoption": 0.9123809523809524,
+  "precision_Transfer": 0.5994005994005994,
+  "recall_Transfer": 0.21201413427561838,
+  "precision_Return to Owner": 0.5216016859852476,
+  "recall_Return to Owner": 0.4596100278551532,
+  "precision_Euthanasia": 0.0,
+  "recall_Euthanasia": 0.0,
+  "train_accuracy": 0.637732090206391,
+  "fit_seconds": 13.251391374971718,
+  "predict_seconds": 0.02922749996650964,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "C": "1.0",
+    "class_weight": "None",
+    "dual": "'auto'",
+    "fit_intercept": "True",
+    "intercept_scaling": "1",
+    "loss": "'squared_hinge'",
+    "max_iter": "1000",
+    "multi_class": "'ovr'",
+    "penalty": "'l2'",
+    "random_state": "42",
+    "tol": "0.0001",
+    "verbose": "0"
+  }
+}

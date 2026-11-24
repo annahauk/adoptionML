@@ -2,7 +2,7 @@
 
 This is a briefing for an assistant helping write and edit the research write-up (LaTeX, in Overleaf) for this project. The code lives in the GitHub repo `annahauk/adoptionML`, and this file summarizes it. **Every number below comes from code that was actually run.** If a number isn't here or in a synced repo file, it doesn't exist yet: do not invent it.
 
-Last updated: 2026-11-08. If the repo files disagree with this document, trust the repo.
+Last updated: 2026-11-09. If the repo files disagree with this document, trust the repo.
 
 ---
 
@@ -125,11 +125,58 @@ Recall for "3+ months" is ≤ 9% for every real model. Without `has_name`, gradi
 
 **Interpretation for the paper:** length of stay is only weakly predictable from intake data. That's a finding, not a failure. Report the improvement over the baseline and QWK. Class weighting trades accuracy for finding long-stay animals, which is the operationally useful direction.
 
+### 6d. Length of stay after hyperparameter tuning (`length_of_stay/` notebooks 02–12)
+
+**Tuning procedure** (`utils.tune_classifier`):
+- Randomized search, 10–25 candidates per model.
+- A time-ordered inner split inside the training years: candidates fit on intakes before 2021, scored on 2021 intakes (grouped by animal).
+- Candidates are ranked by **macro-F1**. Class weighting is part of the search space wherever the model supports it.
+- The best setting is refit on all training years (< 2022) and scored on the same 2022 val set as the untuned models. Val and test are never used for selection.
+
+| Model | Untuned acc / macro-F1 / QWK | Tuned acc / macro-F1 / QWK | Tuned "3+ months" recall | Tuned train acc |
+|---|---|---|---|---|
+| Random forest | 0.496 / 0.337 / 0.249 | 0.483 / **0.405** / **0.342** | 0.16 | 0.798 |
+| Extra trees | 0.484 / 0.327 / 0.234 | 0.487 / 0.384 / 0.313 | 0.11 | 0.960 |
+| Gradient boosting | **0.528** / 0.360 / 0.301 | 0.517 / 0.383 / 0.314 | 0.07 | 0.690 |
+| Decision tree | 0.416 / 0.321 / 0.172 | 0.423 / 0.374 / 0.245 | 0.31 | 0.443 |
+| Linear SVM | 0.459 / 0.273 / 0.135 | 0.422 / 0.370 / 0.268 | 0.44 | 0.518 |
+| Neural network (MLP) | 0.486 / 0.375 / 0.310 | 0.514 / 0.364 / 0.298 | 0.02 | 0.642 |
+| Logistic regression | 0.462 / 0.297 / 0.179 | 0.385 / 0.360 / 0.217 | 0.57 | 0.445 |
+| AdaBoost | 0.425 / 0.228 / 0.048 | 0.505 / 0.348 / 0.258 | 0.01 | 0.588 |
+| k-nearest neighbors | 0.435 / 0.331 / 0.207 | 0.462 / 0.322 / 0.206 | 0.01 | 0.643 |
+| Gaussian naive Bayes | 0.158 / 0.154 / 0.080 | 0.333 / 0.274 / 0.067 | 0.09 | 0.423 |
+| *Majority baseline* | *0.432 / 0.151 / 0.000* | — | — | — |
+
+- **Best tuned model: random forest** (macro-F1 0.405, QWK 0.342). Settings: `class_weight="balanced"`, 300 trees, `max_depth=30`, `min_samples_leaf=5`, `max_features=0.3`. Train accuracy fell from 0.994 to 0.798, so it overfits much less.
+- The search chose `class_weight="balanced"` for every model that supports it except gradient boosting. This trades accuracy for recall on long stays: for example, logistic regression's accuracy drops to 0.385, but its "3+ months" recall rises from 0.01 to 0.57. Rankings by accuracy and by macro-F1 differ, so always report both.
+- MLP and k-NN got slightly worse on macro-F1 after tuning, because settings chosen on 2021 don't fully carry over to 2022 (drift). Report this as is.
+- The ceiling is about 0.40 macro-F1 and 0.34 QWK, consistent with §6c.
+- Implementation note: `utils.SafeMLPClassifier` works around a scikit-learn 1.7 bug (`MLPClassifier` with `early_stopping=True` fails on string labels). It doesn't change the model.
+
+### 6e. One combined model vs. separate dog and cat models (`length_of_stay/13_dogs_vs_cats.ipynb`)
+
+Same split and tuned settings. "Species-specific" means a dog-only model for dogs and a cat-only model for cats; the dog training set is about 75k rows and the cat set about 51k. Δ = species-specific − combined, macro-F1 on val 2022:
+
+| Model | Δ all | Δ dogs | Δ cats |
+|---|---|---|---|
+| Random forest | −0.008 | +0.006 | −0.008 |
+| Extra trees | −0.004 | −0.002 | −0.002 |
+| Gradient boosting | −0.015 | −0.010 | −0.013 |
+| Neural network (MLP) | −0.009 | +0.001 | −0.015 |
+| Logistic regression | −0.002 | +0.013 | +0.010 |
+| Linear SVM | +0.022 | +0.032 | +0.008 |
+| Gaussian naive Bayes | +0.044 | +0.014 | +0.060 |
+
+- Gradient boosting **re-tuned separately per species** reaches overall macro-F1 0.363, vs 0.383 for the combined model.
+- **Conclusion:** splitting by species does not help the strong models. Changes are within about ±0.015 macro-F1, and gradient boosting and the MLP get worse on cats (gradient boosting's cat accuracy goes 0.506 → 0.479). Only the weak models benefit, because they can't model species interactions themselves.
+- **Recommendation:** use one combined model with `animal_type` as a feature, and report per-species metrics as a subgroup check. Cats are slightly harder to predict than dogs for every model.
+
 ## 7. Decisions and caveats
 
 - **`has_name` is kept as a feature (team decision).** Evidence that it may leak: the Name field is one current-name value copied onto every record. It is identical across all of an animal's stays and between intake and outcome rows. Among strays, 93.5% of those returned to their owner have a name vs 16% of those transferred. The write-up should state this caveat and report results with and without the feature (numbers in 6a and 6b).
 - **The test set is untouched.** All numbers so far are on val. Test is scored once, after tuning.
-- **No hyperparameter tuning yet.** Deep trees overfit (99% train accuracy); linear models underfit.
+- **Tuning is light to medium** (10–25 random candidates per model, one inner validation year). A larger search or time-series cross-validation over several years could change the rankings slightly. Untuned deep trees overfit (99% train accuracy); tuning reduced that (random forest: 80%).
+- **Species:** one combined model is used (see 6e).
 - The prior-intake count misses any history before Oct 2013.
 
 ## 8. Related work notes
@@ -151,10 +198,10 @@ Get exact BibTeX from the publisher or Google Scholar; don't reconstruct it from
 
 ## 9. Status and planned work
 
-- Done: Austin cleaning and join, EDA, leakage-safe features, time-grouped split, length-of-stay model comparison (untuned), outcome baselines.
+- Done: Austin cleaning and join, EDA, leakage-safe features, time-grouped split, length-of-stay model comparison (untuned and tuned), dogs-vs-cats comparison, outcome baselines.
 - Next:
   - outcome-prediction model comparison (`outcome_pred/`);
-  - class-weighted and tuned length-of-stay models (gradient boosting, MLP, random forest);
+  - final test-set evaluation (once) of the shortlisted length-of-stay models: tuned random forest and gradient boosting;
   - a binary long-stay (≥ 30 days) model, and/or regression on log-days, and/or survival analysis;
   - permutation feature importance.
 - Later: PetFinder photo-quality features and ablation; PCA and clustering segmentation; Bayesian intake forecasting (seasonal); Streamlit dashboard; a subgroup check (breed, color).
