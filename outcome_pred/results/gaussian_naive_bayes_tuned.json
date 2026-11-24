@@ -1,0 +1,30 @@
+{
+  "model": "Gaussian naive Bayes (tuned)",
+  "macro_f1": 0.3791556444193772,
+  "accuracy": 0.4327900287631831,
+  "precision_Adoption": 0.6909859899550621,
+  "recall_Adoption": 0.4149206349206349,
+  "precision_Transfer": 0.3066948928287907,
+  "recall_Transfer": 0.4095406360424028,
+  "precision_Return to Owner": 0.4160887656033287,
+  "recall_Return to Owner": 0.5571030640668524,
+  "precision_Euthanasia": 0.09887798036465638,
+  "recall_Euthanasia": 0.6322869955156951,
+  "train_accuracy": 0.49200733126145507,
+  "fit_seconds": 0.6893551250104792,
+  "predict_seconds": 0.05169808299979195,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "priors": "None",
+    "var_smoothing": "0.024780710226621445"
+  },
+  "best_params": {
+    "var_smoothing": 0.024780710226621445
+  },
+  "inner_val_score": 0.37193126740387117,
+  "tuning_scoring": "f1_macro",
+  "tuning_n_iter": 15,
+  "tuning_minutes": 0.07592361736654614
+}

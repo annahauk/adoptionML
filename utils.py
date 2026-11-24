@@ -502,6 +502,12 @@ def load_los_splits():
     return time_group_split(df)
 
 
+def load_outcome_splits():
+    """Train / val / test for outcome models (target `outcome_group`, OUTCOME_CLASSES)."""
+    df = model_frame(load_austin_episodes(), task="outcome")
+    return time_group_split(df)
+
+
 def evaluate_classifier(estimator, train: pd.DataFrame, eval_df: pd.DataFrame, name: str,
                         target: str = "los_bin", labels=None, ordinal: bool = True,
                         preprocessor=None, results_dir=None, eval_split: str = "val",
@@ -682,3 +688,55 @@ class SafeMLPClassifier(_MLPClassifier):
 
     def predict(self, X):
         return self._label_encoder.inverse_transform(super().predict(X).astype(int))
+
+
+# ---------------------------------------------------------------------------
+# Feature importance
+# ---------------------------------------------------------------------------
+# Raw features grouped by the concept they encode. Permuting a whole group at
+# once avoids the classic permutation-importance trap where correlated copies
+# (age_days / log_age_days / age_group) "cover" for each other and all look
+# unimportant.
+FEATURE_GROUPS = {
+    "age": ["age_days", "log_age_days", "age_group"],
+    "intake condition": ["intake_condition"],
+    "intake type": ["intake_type"],
+    "species": ["animal_type"],
+    "sex & sterilization": ["fixed_status", "is_male"],
+    "owner-given name": ["has_name"],
+    "shelter history": ["n_prior_intakes", "is_return", "days_since_last_outcome"],
+    "breed": ["breed_primary", "is_mix"],
+    "color": ["color_primary", "color_pattern", "is_multicolor", "is_black"],
+    "found location": ["found_city", "found_in_austin", "found_has_address"],
+    "intake date & time": ["intake_year", "intake_month", "season", "intake_dayofweek", "intake_hour"],
+}
+assert sorted(sum(FEATURE_GROUPS.values(), [])) == sorted(FEATURES)
+
+
+def grouped_permutation_importance(pipe, X: pd.DataFrame, y, groups: dict = None,
+                                   metric=None, n_repeats: int = 5,
+                                   seed: int = SEED) -> pd.DataFrame:
+    """Drop in `metric(y, pipe.predict(X))` when each group of raw columns is
+    shuffled together (rows permuted jointly, so within-group relationships
+    are kept). Returns mean/std drop per group, sorted. Default metric:
+    macro-F1. Bigger drop = the model relies on that group more.
+    Associations only: a feature can matter to the model without causing anything."""
+    groups = FEATURE_GROUPS if groups is None else groups
+    if metric is None:
+        def metric(t, p):
+            return f1_score(t, p, average="macro", zero_division=0)
+    rng = np.random.default_rng(seed)
+    base = metric(y, pipe.predict(X))
+    rows = []
+    for name, cols in groups.items():
+        drops = []
+        for _ in range(n_repeats):
+            Xp = X.copy()
+            idx = rng.permutation(len(X))
+            Xp[cols] = X[cols].iloc[idx].to_numpy()
+            drops.append(base - metric(y, pipe.predict(Xp)))
+        rows.append({"group": name, "features": ", ".join(cols),
+                     "importance": float(np.mean(drops)), "std": float(np.std(drops))})
+    out = pd.DataFrame(rows).sort_values("importance", ascending=False).reset_index(drop=True)
+    out.attrs["baseline_score"] = base
+    return out

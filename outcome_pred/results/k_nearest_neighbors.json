@@ -1,0 +1,29 @@
+{
+  "model": "k-nearest neighbors",
+  "macro_f1": 0.3951416303141046,
+  "accuracy": 0.610738255033557,
+  "precision_Adoption": 0.6618504435994931,
+  "recall_Adoption": 0.8288888888888889,
+  "precision_Transfer": 0.4585870889159562,
+  "recall_Transfer": 0.26607773851590105,
+  "precision_Return to Owner": 0.45552884615384615,
+  "recall_Return to Owner": 0.3519034354688951,
+  "precision_Euthanasia": 0.24242424242424243,
+  "recall_Euthanasia": 0.07174887892376682,
+  "train_accuracy": 0.7360108375169336,
+  "fit_seconds": 0.4685281669953838,
+  "predict_seconds": 3.245793041016441,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "algorithm": "'auto'",
+    "leaf_size": "30",
+    "metric": "'minkowski'",
+    "metric_params": "None",
+    "n_jobs": "-1",
+    "n_neighbors": "5",
+    "p": "2",
+    "weights": "'uniform'"
+  }
+}

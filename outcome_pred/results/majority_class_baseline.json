@@ -1,0 +1,24 @@
+{
+  "model": "Majority class (baseline)",
+  "macro_f1": 0.18828451882845187,
+  "accuracy": 0.6040268456375839,
+  "precision_Adoption": 0.6040268456375839,
+  "recall_Adoption": 1.0,
+  "precision_Transfer": 0.0,
+  "recall_Transfer": 0.0,
+  "precision_Return to Owner": 0.0,
+  "recall_Return to Owner": 0.0,
+  "precision_Euthanasia": 0.0,
+  "recall_Euthanasia": 0.0,
+  "train_accuracy": 0.48044465694477645,
+  "fit_seconds": 0.4428640410187654,
+  "predict_seconds": 0.02442612504819408,
+  "eval_split": "val",
+  "n_train": 125490,
+  "n_eval": 10430,
+  "params": {
+    "constant": "None",
+    "random_state": "None",
+    "strategy": "'most_frequent'"
+  }
+}
